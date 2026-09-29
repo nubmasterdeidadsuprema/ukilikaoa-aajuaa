@@ -93,7 +93,7 @@
 		const canvas = document.getElementById('canvas');
 		const contextoCanvas = canvas.getContext('2d', { willReadFrequently: true });
 		const accionesAsistencia = document.getElementById('accionesAsistencia');
-		const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxsNxOdBzT85OzkITVtTACEMBqUElx7RGdroGZrBtzOwu4GYdoLS0wxlQLbmdAL8jjb/exec';
+		const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbw5zWRF9nOSdKPI27dRKlqaqHqBdUPsrxiELeggTb32d0WcdhTf_cGGgo3940gJ-qOG/exec';
 		
 		const CONFIGURACION_ASISTENCIA = {
 			hoja: 'LUNES',
@@ -288,22 +288,22 @@
 			status.className = '';
 			status.textContent = 'Registrando movimiento...';
 			try {
-				const respuesta = await fetch(API_ENDPOINT, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						accion: 'registrarMovimientoAsistencia',
-						clave: claveActual,
-						tipo,
-						evento: eventoActual,
-						hoja: hojaActual
-					})
-				});
-				const datos = await respuesta.json();
-				if (!datos || !datos.ok) throw new Error((datos && datos.error) || 'No se pudo registrar la asistencia.');
-				const registro = datos.resultado || {};
-				mostrarRegistro(registro);
-				status.textContent = autoGuardar ? 'Asistencia registrada en ' + hojaActual + ' (' + tipo + ').' : textoMovimiento(tipo, false);
+				if (typeof google !== 'undefined' && google.script && google.script.run) {
+					google.script.run
+						.withSuccessHandler((resultado) => {
+							const registro = resultado || {};
+							mostrarRegistro(registro);
+							status.textContent = autoGuardar ? 'Asistencia registrada en ' + hojaActual + ' (' + tipo + ').' : textoMovimiento(tipo, false);
+						})
+						.withFailureHandler((error) => {
+							status.className = 'error';
+							status.textContent = error && error.message ? error.message : 'No se pudo guardar el movimiento.';
+						})
+						.registrarMovimientoAsistencia(claveActual, tipo, eventoActual, hojaActual);
+					return;
+				}
+
+				throw new Error('La página no está ejecutándose dentro de Apps Script. Abre la app desde la Web App publicada.');
 			} catch (error) {
 				status.className = 'error';
 				status.textContent = error.message || 'No se pudo guardar el movimiento.';
