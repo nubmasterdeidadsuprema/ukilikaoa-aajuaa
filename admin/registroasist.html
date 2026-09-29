@@ -93,7 +93,7 @@
 		const canvas = document.getElementById('canvas');
 		const contextoCanvas = canvas.getContext('2d', { willReadFrequently: true });
 		const accionesAsistencia = document.getElementById('accionesAsistencia');
-		const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbykNZlVB_Yha-2xO0rMrgOyMWE4obLruTJRki8N87M53IXv2soe5kGyTC2-x_cBid7L/exec';
+		const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxiYFF1MNdAoWfSHHEEJoWuhh4Kqsu_7flc7oH5U4ZBlnMmktWc7t0naPYsSuC1BK7f/exec';
 		
 		const CONFIGURACION_ASISTENCIA = {
 			hoja: 'LUNES',
@@ -143,7 +143,10 @@
 				const callback = '__asistenciaCallback_' + Date.now() + '_' + Math.random().toString(36).slice(2);
 				const script = document.createElement('script');
 				const consulta = new URLSearchParams({ ...parametros, accion, callback });
-				const timeout = setTimeout(() => terminar(new Error('El servidor tardó demasiado en responder.')), 15000);
+				const timeout = setTimeout(() => {
+					console.error('Apps Script timeout:', API_ENDPOINT);
+					terminar(new Error('El servidor tardó demasiado en responder. Revisa que la Web App de Apps Script esté publicada y que la URL sea la correcta.'));
+				}, 30000);
 				const terminar = (error, resultado) => {
 					clearTimeout(timeout);
 					delete window[callback];
