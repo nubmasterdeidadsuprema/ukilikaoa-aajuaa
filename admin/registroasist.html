@@ -53,24 +53,6 @@
 				<input id="clave" type="text" placeholder="HELA-XXXXX" autocomplete="off" aria-label="Clave HELA">
 				<button id="buscar" type="button">Buscar</button>
 			</div>
-			<div class="config">
-				<label>
-					Hoja
-					<select id="hojaConferencia">
-						<option value="LUNES">LUNES</option>
-						<option value="MIERCOLES">MIERCOLES</option>
-						<option value="VIERNES">VIERNES</option>
-					</select>
-				</label>
-				<label>
-					Movimiento
-					<select id="tipoMovimiento">
-						<option value="entrada">ENTRADA</option>
-						<option value="comida">COMIDA</option>
-						<option value="salida">SALIDA</option>
-					</select>
-				</label>
-			</div>
 			<div class="event-options" role="group" aria-label="Tipo de evento">
 				<button type="button" data-evento="conferencias" aria-pressed="true">CONFERENCIAS</button>
 			</div>
@@ -111,14 +93,17 @@
 		const canvas = document.getElementById('canvas');
 		const contextoCanvas = canvas.getContext('2d', { willReadFrequently: true });
 		const accionesAsistencia = document.getElementById('accionesAsistencia');
-		const hojaConferencia = document.getElementById('hojaConferencia');
-		const tipoMovimiento = document.getElementById('tipoMovimiento');
-		const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxJeS_1tTwCGqkto5OWyi4dfHSdWrMBDyksLnSZskrlvPvObZH1VQ8qWMwWrqwZTfw/exec';
+		const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbzm-nj0-hmiFlYK9m8CU41RWDu9OywZV8awSqVzu0jrpyIGXc1SOQFbRNm5i_UuWGO9/exec';
+		
+		const CONFIGURACION_ASISTENCIA = {
+			hoja: 'LUNES',
+			tipo: 'entrada'
+		};
 		
 		let registroActual = null;
 		let eventoActual = 'conferencias';
-		let hojaActual = hojaConferencia.value;
-		let tipoMovimientoActual = tipoMovimiento.value;
+		let hojaActual = CONFIGURACION_ASISTENCIA.hoja;
+		let tipoMovimientoActual = CONFIGURACION_ASISTENCIA.tipo;
 		let streamCamara = null;
 		let intervaloEscaneo = null;
 
@@ -142,7 +127,7 @@
 			document.getElementById('entradaFila').hidden = registro.evento !== 'conferencias';
 			document.getElementById('comidaFila').hidden = registro.evento !== 'conferencias';
 			document.getElementById('salidaFila').hidden = registro.evento !== 'conferencias';
-			accionesAsistencia.hidden = registro.evento !== 'conferencias';
+			accionesAsistencia.hidden = true;
 			card.classList.add('visible');
 		}
 
@@ -317,16 +302,6 @@
 		buscar.addEventListener('click', buscarRegistro);
 		document.querySelectorAll('[data-evento]').forEach(boton => {
 			boton.addEventListener('click', () => elegirEvento(boton.dataset.evento, boton));
-		});
-		hojaConferencia.addEventListener('change', () => {
-			hojaActual = hojaConferencia.value;
-			if (/^HELA-\d{5}$/i.test(clave.value.trim())) buscarRegistro();
-		});
-		tipoMovimiento.addEventListener('change', () => {
-			tipoMovimientoActual = tipoMovimiento.value;
-			if (registroActual) {
-				status.textContent = 'Movimiento activo: ' + tipoMovimientoActual + ' en ' + hojaActual + '.';
-			}
 		});
 		abrirCamara.addEventListener('click', abrirLectorQr);
 		cerrarCamara.addEventListener('click', cerrarLectorQr);
