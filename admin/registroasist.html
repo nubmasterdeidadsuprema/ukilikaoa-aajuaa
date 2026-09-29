@@ -93,7 +93,7 @@
 		const canvas = document.getElementById('canvas');
 		const contextoCanvas = canvas.getContext('2d', { willReadFrequently: true });
 		const accionesAsistencia = document.getElementById('accionesAsistencia');
-		const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxiYFF1MNdAoWfSHHEEJoWuhh4Kqsu_7flc7oH5U4ZBlnMmktWc7t0naPYsSuC1BK7f/exec';
+		const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxsNxOdBzT85OzkITVtTACEMBqUElx7RGdroGZrBtzOwu4GYdoLS0wxlQLbmdAL8jjb/exec';
 		
 		const CONFIGURACION_ASISTENCIA = {
 			hoja: 'LUNES',
@@ -258,17 +258,13 @@
 
 		async function buscarRegistro() {
 			status.className = '';
-			status.textContent = 'Buscando...';
+			status.textContent = 'Registrando ' + tipoMovimientoActual + ' en ' + hojaActual + '...';
 			card.classList.remove('visible');
 			try {
-				const registro = await consultarApi('buscarAsistencia', { clave: clave.value, evento: eventoActual, hoja: hojaActual });
-				const nombreMovimiento = { entrada: 'entrada', comida: 'comida', salida: 'salida' }[tipoMovimientoActual] || tipoMovimientoActual;
-				status.textContent = 'Usuario encontrado. Registrando ' + nombreMovimiento + ' en ' + hojaActual + '...';
-				mostrarRegistro(registro);
 				await registrarMovimiento(tipoMovimientoActual, true);
 			} catch (error) {
 				status.className = 'error';
-				status.textContent = error.message || 'No se pudo consultar el registro.';
+				status.textContent = error.message || 'No se pudo registrar la asistencia.';
 			}
 		}
 
@@ -282,20 +278,32 @@
 		}
 
 		async function registrarMovimiento(tipo, autoGuardar = false) {
-			status.className = '';
-			status.textContent = 'Guardando movimiento...';
-			try {
-				const actual = await consultarApi('buscarAsistencia', { clave: registroActual.clave, evento: eventoActual, hoja: hojaActual });
-				if (actual[tipo]) {
-					status.textContent = autoGuardar ? 'El usuario ya tiene ' + tipo + ' registrada en ' + hojaActual + '.' : textoMovimiento(tipo, true);
-					mostrarRegistro(actual);
-					return;
-				}
+			const claveActual = (clave.value || '').trim();
+			if (!/^HELA-\d{5}$/i.test(claveActual)) {
+				status.className = 'error';
+				status.textContent = 'Escribe una clave con formato HELA-12345.';
+				return;
+			}
 
-				enviarAccionApi({ accion: 'registrarMovimientoAsistencia', clave: registroActual.clave, tipo, evento: eventoActual, hoja: hojaActual });
-				const registro = await esperarConferencia(registroActual.clave, actualizada => Boolean(actualizada[tipo]), eventoActual, hojaActual);
-				status.textContent = autoGuardar ? 'Asistencia registrada en ' + hojaActual + ' (' + tipo + ').' : textoMovimiento(tipo, false);
+			status.className = '';
+			status.textContent = 'Registrando movimiento...';
+			try {
+				const respuesta = await fetch(API_ENDPOINT, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						accion: 'registrarMovimientoAsistencia',
+						clave: claveActual,
+						tipo,
+						evento: eventoActual,
+						hoja: hojaActual
+					})
+				});
+				const datos = await respuesta.json();
+				if (!datos || !datos.ok) throw new Error((datos && datos.error) || 'No se pudo registrar la asistencia.');
+				const registro = datos.resultado || {};
 				mostrarRegistro(registro);
+				status.textContent = autoGuardar ? 'Asistencia registrada en ' + hojaActual + ' (' + tipo + ').' : textoMovimiento(tipo, false);
 			} catch (error) {
 				status.className = 'error';
 				status.textContent = error.message || 'No se pudo guardar el movimiento.';
