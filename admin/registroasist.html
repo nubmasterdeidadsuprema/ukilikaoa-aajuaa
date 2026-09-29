@@ -53,6 +53,24 @@
 				<input id="clave" type="text" placeholder="HELA-XXXXX" autocomplete="off" aria-label="Clave HELA">
 				<button id="buscar" type="button">Buscar</button>
 			</div>
+			<div class="config">
+				<label>
+					Hoja
+					<select id="hojaConferencia">
+						<option value="LUNES">LUNES</option>
+						<option value="MIERCOLES">MIERCOLES</option>
+						<option value="VIERNES">VIERNES</option>
+					</select>
+				</label>
+				<label>
+					Movimiento
+					<select id="tipoMovimiento">
+						<option value="entrada">ENTRADA</option>
+						<option value="comida">COMIDA</option>
+						<option value="salida">SALIDA</option>
+					</select>
+				</label>
+			</div>
 			<div class="event-options" role="group" aria-label="Tipo de evento">
 				<button type="button" data-evento="conferencias" aria-pressed="true">CONFERENCIAS</button>
 			</div>
@@ -93,17 +111,21 @@
 		const canvas = document.getElementById('canvas');
 		const contextoCanvas = canvas.getContext('2d', { willReadFrequently: true });
 		const accionesAsistencia = document.getElementById('accionesAsistencia');
-		const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxglKYY8XJ4ipXCmwqE_pxkP_zZiOd_V-2n7g8Cf_uVbcrnoUhe5WBD2bzPxp-KfQKv/exec';
+		const hojaConferencia = document.getElementById('hojaConferencia');
+		const tipoMovimiento = document.getElementById('tipoMovimiento');
+		const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwUoX0ejY7p1aOI1MVUtL_zLEoJTiwuk0BsN2NwHI-02Hp61y0yNpDdinqdXfFy_44/exec';
 		
 		const CONFIGURACION_ASISTENCIA = {
 			hoja: 'LUNES',
-			tipo: 'salida'
+			tipo: 'entrada'
 		};
 		
 		let registroActual = null;
 		let eventoActual = 'conferencias';
 		let hojaActual = CONFIGURACION_ASISTENCIA.hoja;
 		let tipoMovimientoActual = CONFIGURACION_ASISTENCIA.tipo;
+		hojaConferencia.value = hojaActual;
+		tipoMovimiento.value = tipoMovimientoActual;
 		let streamCamara = null;
 		let intervaloEscaneo = null;
 
@@ -258,13 +280,17 @@
 
 		async function buscarRegistro() {
 			status.className = '';
-			status.textContent = 'Registrando ' + tipoMovimientoActual + ' en ' + hojaActual + '...';
+			status.textContent = 'Buscando...';
 			card.classList.remove('visible');
 			try {
+				const registro = await consultarApi('buscarAsistencia', { clave: clave.value, evento: eventoActual, hoja: hojaActual });
+				const nombreMovimiento = { entrada: 'entrada', comida: 'comida', salida: 'salida' }[tipoMovimientoActual] || tipoMovimientoActual;
+				status.textContent = 'Usuario encontrado. Registrando ' + nombreMovimiento + ' en ' + hojaActual + '...';
+				mostrarRegistro(registro);
 				await registrarMovimiento(tipoMovimientoActual, true);
 			} catch (error) {
 				status.className = 'error';
-				status.textContent = error.message || 'No se pudo registrar la asistencia.';
+				status.textContent = error.message || 'No se pudo consultar el registro.';
 			}
 		}
 
@@ -278,32 +304,20 @@
 		}
 
 		async function registrarMovimiento(tipo, autoGuardar = false) {
-			const claveActual = (clave.value || '').trim();
-			if (!/^HELA-\d{5}$/i.test(claveActual)) {
-				status.className = 'error';
-				status.textContent = 'Escribe una clave con formato HELA-12345.';
-				return;
-			}
-
 			status.className = '';
-			status.textContent = 'Registrando movimiento...';
+			status.textContent = 'Guardando movimiento...';
 			try {
-				if (typeof google !== 'undefined' && google.script && google.script.run) {
-					google.script.run
-						.withSuccessHandler((resultado) => {
-							const registro = resultado || {};
-							mostrarRegistro(registro);
-							status.textContent = autoGuardar ? 'Asistencia registrada en ' + hojaActual + ' (' + tipo + ').' : textoMovimiento(tipo, false);
-						})
-						.withFailureHandler((error) => {
-							status.className = 'error';
-							status.textContent = error && error.message ? error.message : 'No se pudo guardar el movimiento.';
-						})
-						.registrarMovimientoAsistencia(claveActual, tipo, eventoActual, hojaActual);
+				const actual = await consultarApi('buscarAsistencia', { clave: registroActual.clave, evento: eventoActual, hoja: hojaActual });
+				if (actual[tipo]) {
+					status.textContent = autoGuardar ? 'El usuario ya tiene ' + tipo + ' registrada en ' + hojaActual + '.' : textoMovimiento(tipo, true);
+					mostrarRegistro(actual);
 					return;
 				}
 
-				throw new Error('La página no está ejecutándose dentro de Apps Script. Abre la app desde la Web App publicada.');
+				enviarAccionApi({ accion: 'registrarMovimientoAsistencia', clave: registroActual.clave, tipo, evento: eventoActual, hoja: hojaActual });
+				const registro = await esperarConferencia(registroActual.clave, actualizada => Boolean(actualizada[tipo]), eventoActual, hojaActual);
+				status.textContent = autoGuardar ? 'Asistencia registrada en ' + hojaActual + ' (' + tipo + ').' : textoMovimiento(tipo, false);
+				mostrarRegistro(registro);
 			} catch (error) {
 				status.className = 'error';
 				status.textContent = error.message || 'No se pudo guardar el movimiento.';
@@ -313,6 +327,16 @@
 		buscar.addEventListener('click', buscarRegistro);
 		document.querySelectorAll('[data-evento]').forEach(boton => {
 			boton.addEventListener('click', () => elegirEvento(boton.dataset.evento, boton));
+		});
+		hojaConferencia.addEventListener('change', () => {
+			hojaActual = hojaConferencia.value;
+			if (/^HELA-\d{5}$/i.test(clave.value.trim())) buscarRegistro();
+		});
+		tipoMovimiento.addEventListener('change', () => {
+			tipoMovimientoActual = tipoMovimiento.value;
+			if (registroActual) {
+				status.textContent = 'Movimiento activo: ' + tipoMovimientoActual + ' en ' + hojaActual + '.';
+			}
 		});
 		abrirCamara.addEventListener('click', abrirLectorQr);
 		cerrarCamara.addEventListener('click', cerrarLectorQr);
