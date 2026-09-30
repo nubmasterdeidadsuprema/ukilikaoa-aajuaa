@@ -113,7 +113,7 @@
 		const accionesAsistencia = document.getElementById('accionesAsistencia');
 		const hojaConferencia = document.getElementById('hojaConferencia');
 		const tipoMovimiento = document.getElementById('tipoMovimiento');
-		const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyqmuSm0ZW9b4T-pyFH6kbF61c-o2wp7fuDW9hzDF6R1PAPGfPQYst0n6IqxEjrs8M/exec';
+		const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwiTvF4XyM7URYipIWnpvDexTrbgmkKx286CCqCrznjCtq-2w3ejrO9gyaOZoalZXHC/exec';
 		
 		const CONFIGURACION_ASISTENCIA = {
 			hoja: 'LUNES',
@@ -307,7 +307,8 @@
 			status.className = '';
 			status.textContent = 'Guardando movimiento...';
 			try {
-				const actual = await consultarApi('buscarAsistencia', { clave: registroActual.clave, evento: eventoActual, hoja: hojaActual });
+				const actual = registroActual;
+				if (!actual) throw new Error('Busca primero al usuario antes de registrar el movimiento.');
 				if (actual[tipo]) {
 					status.textContent = autoGuardar ? 'El usuario ya tiene ' + tipo + ' registrada en ' + hojaActual + '.' : textoMovimiento(tipo, true);
 					mostrarRegistro(actual);
