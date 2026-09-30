@@ -41,6 +41,7 @@
 				<div class="data">
 					<div>Clave: <strong id="claveVista"></strong></div>
 					<div>Correo: <strong id="correo"></strong></div>
+					<div>Visita asignada: <strong id="visita"></strong></div>
 					<div>Entrada: <strong id="entrada">No registrada</strong></div>
 				</div>
 			</article>
@@ -51,7 +52,7 @@
 		const buscar = document.getElementById('buscar');
 		const status = document.getElementById('status');
 		const card = document.getElementById('card');
-		const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwct7aX6TrUIp3mYE5AE3E1t889hbZ_Fq6GDbzdDoThxmvFY7fBuzxnBWUIiDM8x2q6/exec';
+		const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyQGjeiehgdx96RSedZIm7znpyPI3nFcoZQEGlDrFxZQDGCzM8VwGTwxx_j9AujN2rQ/exec';
 		
         let procesando = false;
 
@@ -89,6 +90,7 @@
 			document.getElementById('nombre').textContent = registro.nombre || '';
 			document.getElementById('claveVista').textContent = registro.clave || '';
 			document.getElementById('correo').textContent = registro.correo || '';
+			document.getElementById('visita').textContent = registro.visita || registro.hoja || '';
 			document.getElementById('entrada').textContent = registro.entrada ? new Date(registro.entrada).toLocaleString('es-MX') : 'No registrada';
 			card.classList.add('visible');
 		}
@@ -122,15 +124,15 @@
 				const actual = await consultarApi('buscarAsistenciaVisita', { clave: claveUsuario });
 				mostrarRegistro(actual);
 				if (actual.entrada) {
-					status.textContent = 'La entrada ya estaba registrada.';
+					status.textContent = 'La entrada ya estaba registrada para ' + actual.visita + '.';
 					return;
 				}
 
-				status.textContent = 'Registrando ENTRADA...';
+				status.textContent = 'Registrando ENTRADA en ' + actual.visita + '...';
 				await enviarRegistro(claveUsuario);
 				const confirmado = await esperarRegistro(claveUsuario);
 				mostrarRegistro(confirmado);
-				status.textContent = 'ENTRADA registrada en VISITAS.';
+				status.textContent = 'ENTRADA registrada en ' + confirmado.visita + '.';
 			} catch (error) {
 				status.className = 'error';
 				status.textContent = error.message || 'No se pudo registrar la entrada.';
