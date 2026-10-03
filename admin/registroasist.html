@@ -85,6 +85,7 @@
 				<div class="data">
 					<div>Clave: <strong id="claveVista"></strong></div>
 					<div>Correo: <strong id="correo"></strong></div>
+					<div id="tallaFila" hidden>Tu talla es: <strong id="talla"></strong></div>
 					<div id="entradaFila">Entrada: <strong id="entrada">No registrada</strong></div>
 					<div id="comidaFila">Comida: <strong id="comida">No registrada</strong></div>
 					<div id="salidaFila">Salida: <strong id="salida">No registrada</strong></div>
@@ -113,7 +114,7 @@
 		const accionesAsistencia = document.getElementById('accionesAsistencia');
 		const hojaConferencia = document.getElementById('hojaConferencia');
 		const tipoMovimiento = document.getElementById('tipoMovimiento');
-		const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwXS11mgxbFjv2_h_Qe5yDMY19Ik0C-V5mYSLlqt6hvj5ZkQIPRswkpN0-a8gl6XUbQ/exec';
+		const API_ENDPOINT = 'https://script.google.com/macros/s/AKfycbzXmy7oKAuTwS6Y8URM4Qxac3aujIHByGatZb62Qgll7-Pvap_86Mr-xQrbDvHJwvn6/exec';
 		
 		const CONFIGURACION_ASISTENCIA = {
 			hoja: 'LUNES',
@@ -134,6 +135,7 @@
 			document.getElementById('nombre').textContent = registro.nombre;
 			document.getElementById('claveVista').textContent = registro.clave;
 			document.getElementById('correo').textContent = registro.correo;
+			document.getElementById('talla').textContent = registro.talla || '';
 			document.getElementById('entrada').textContent = formatoFecha(registro.entrada);
 			document.getElementById('comida').textContent = formatoFecha(registro.comida);
 			document.getElementById('salida').textContent = formatoFecha(registro.salida);
@@ -146,6 +148,7 @@
 			botonEntrada.textContent = registro.entrada ? 'ENTRADA YA REGISTRADA' : 'Registrar entrada';
 			botonComida.textContent = registro.comida ? 'COMIDA YA REGISTRADA' : 'Registrar comida';
 			botonSalida.textContent = registro.salida ? 'SALIDA YA REGISTRADA' : 'Registrar salida';
+			document.getElementById('tallaFila').hidden = !(registro.evento === 'conferencias' && registro.hoja === 'LUNES' && registro.ultimoMovimiento === 'entrada' && registro.entrada && registro.talla);
 			document.getElementById('entradaFila').hidden = registro.evento !== 'conferencias';
 			document.getElementById('comidaFila').hidden = registro.evento !== 'conferencias';
 			document.getElementById('salidaFila').hidden = registro.evento !== 'conferencias';
@@ -310,6 +313,7 @@
 				const actual = registroActual;
 				if (!actual) throw new Error('Busca primero al usuario antes de registrar el movimiento.');
 				if (actual[tipo]) {
+					actual.ultimoMovimiento = tipo;
 					status.textContent = autoGuardar ? 'El usuario ya tiene ' + tipo + ' registrada en ' + hojaActual + '.' : textoMovimiento(tipo, true);
 					mostrarRegistro(actual);
 					return;
@@ -317,6 +321,7 @@
 
 				enviarAccionApi({ accion: 'registrarMovimientoAsistencia', clave: registroActual.clave, tipo, evento: eventoActual, hoja: hojaActual });
 				const registro = await esperarConferencia(registroActual.clave, actualizada => Boolean(actualizada[tipo]), eventoActual, hojaActual);
+				registro.ultimoMovimiento = tipo;
 				status.textContent = autoGuardar ? 'Asistencia registrada en ' + hojaActual + ' (' + tipo + ').' : textoMovimiento(tipo, false);
 				mostrarRegistro(registro);
 			} catch (error) {
